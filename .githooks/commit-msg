@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# 模块分支的提交信息必须带验收要用的字段，总管合并时据此写 change-log.md。
+set -euo pipefail
+fail() { printf '✗ commit-msg: %b\n' "$1" >&2; exit 1; }
+. "$(dirname "$0")/_lib.sh"
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)
+module=$(agent_branch_module "$branch") || exit 0   # main 由 pre-commit 把关
+agent_merging_main && exit 0                        # 同步 main 的合并提交免填
+
+msg=$(grep -v '^#' "$1")
+first=$(printf '%s\n' "$msg" | head -n1)
+case "$first" in
+  "[$module] "*) ;;
+  *) fail "第一行必须以 [$module] 开头，当前：$first" ;;
+esac
+for field in 'What:' 'Why:' 'Verify:' 'Revert:'; do
+  printf '%s\n' "$msg" | grep -q "^$field" || fail "缺少 $field 字段。格式：\n\n[$module] 一句话标题\n\nWhat: 改了什么\nWhy: 为什么\nVerify: 总管怎么验证（命令 + 预期结果）\nRevert: 怎么回滚\nCross-module: 无 / 影响哪些模块"
+done

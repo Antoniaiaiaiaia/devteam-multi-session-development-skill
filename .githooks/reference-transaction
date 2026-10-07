@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# 任何方式移动 main（fast-forward、reset、branch -f、update-ref）都必须是总管（AGENT_ROOT=1）。
+# 补上 commit / merge 钩子管不到的路径。
+[ "${1:-}" = prepared ] || exit 0
+[ "${AGENT_ROOT:-}" = 1 ] && exit 0
+while read -r _old _new ref; do
+  if [ "$ref" = refs/heads/main ]; then
+    echo "✗ 只有总管能移动 main。模块 agent 请在自己的分支上工作。" >&2
+    exit 1
+  fi
+done
+exit 0

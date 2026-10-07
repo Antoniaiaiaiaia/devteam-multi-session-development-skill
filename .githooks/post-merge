@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# 提交后在后台检查备份阈值（没有 origin 或没启用备份时什么都不做）
+[ -f "$(dirname "$0")/backup.sh" ] && nohup bash "$(dirname "$0")/backup.sh" >/dev/null 2>&1 &
+exit 0

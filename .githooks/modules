@@ -1,0 +1,5 @@
+# 模块列表：一行一个目录名。模块分支名必须是 <module>/<topic>，且只能改 <module>/ 下的文件。
+design
+frontend
+backend
+infra

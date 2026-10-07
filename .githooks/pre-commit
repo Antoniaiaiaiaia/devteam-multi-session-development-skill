@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# - main 只允许总管提交（AGENT_ROOT=1）
+# - 模块分支 <module>/<topic> 只能改 <module>/ 下的文件；只能合并 main（同步用）
+# - 任何分支都不允许提交密钥文件
+set -euo pipefail
+fail() { printf '✗ pre-commit: %b\n' "$1" >&2; exit 1; }
+. "$(dirname "$0")/_lib.sh"
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)
+staged=$(git diff --cached --name-only --no-renames --diff-filter=ACMRD)
+[ -z "$staged" ] && exit 0
+
+# 1. 密钥（.env.example 放行；删除密钥文件放行）
+added=$(git diff --cached --name-only --no-renames --diff-filter=ACMR)
+secrets=$(printf '%s\n' "$added" \
+  | grep -Ei '(^|/)\.env($|\.)|keypair[^/]*\.json$|(^|/)id\.json$|\.pem$|\.key$|\.p12$|\.p8$' \
+  | grep -v '\.env\.example$' || true)
+[ -z "$secrets" ] || fail "疑似密钥文件被暂存，拒绝提交：\n$secrets"
+
+# 2. 分支与目录范围
+if [ "$branch" = main ]; then
+  [ "${AGENT_ROOT:-}" = 1 ] || fail "main 只允许总管提交。请在 <module>/<topic> 分支上工作，完成后交总管验收合并。"
+  exit 0
+fi
+
+module=$(agent_branch_module "$branch") \
+  || fail "分支名必须是 <module>/<topic>（模块见 .githooks/modules），当前：$branch"
+
+heads=$(agent_merge_heads)
+if [ -n "$heads" ]; then
+  agent_merging_main || fail "模块分支只能合并 main（同步用），不能合并其他分支：\n$heads"
+  staged=$(git diff --cached --name-only --no-renames "$heads")
+fi
+outside=$(printf '%s\n' "$staged" | grep -v "^$module/" || true)
+[ -z "$outside" ] || fail "分支 $branch 只能改 $module/，以下文件越界：\n$outside\n跨模块改动请拆到对应模块的分支，或交给总管。"
