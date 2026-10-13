@@ -1,4 +1,4 @@
-# Devteam Framework
+# Devteam Multi-session Development Skill
 
 **给每个项目配一个「总管 agent」，其余 session 各管一个模块。** 一个人同时开好几个 AI 编码会话（前端、后端、设计、合约……）时，用它管住协作：谁能改哪里、谁来验收合并、决定记在哪、要你做的事汇总到哪。session 之间自动发消息派活和回报，你只需要跟总管说话。
 
@@ -7,8 +7,8 @@
 ## 安装
 
 ```bash
-git clone <this repo> devteam-framework
-cp -R devteam-framework/skills/devteam ~/.claude/skills/
+git clone https://github.com/Antoniaiaiaiaia/devteam-multi-session-development-skill.git
+cp -R devteam-multi-session-development-skill/skills/devteam ~/.claude/skills/
 ```
 
 ## 用法
@@ -108,3 +108,7 @@ skills/devteam/
 - 为 Claude Code 这类能读写仓库、跑命令的 coding agent 设计。会话之间能互相发消息时最顺手（例如 Claude Code 桌面版的 SendMessage）。不能的话，由 Owner 把模块的回报复制给总管，流程一样。
 - 钩子是 bash + git，支持 macOS / Linux。
 - 只是约定和护栏，不替代代码评审和测试。
+
+## License
+
+MIT，见 [LICENSE](LICENSE)。
