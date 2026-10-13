@@ -1,8 +1,53 @@
-# Root Agent Framework
+# Devteam Framework
 
-**给每个项目配一个「总管 agent」。** 一个人同时开好几个 AI 编码会话（前端、后端、设计、合约……）时，用它管住协作：谁能改哪里、谁来验收、决定记在哪、要你做的事汇总到哪。
+**给每个项目配一个「总管 agent」，其余 session 各管一个模块。** 一个人同时开好几个 AI 编码会话（前端、后端、设计、合约……）时，用它管住协作：谁能改哪里、谁来验收合并、决定记在哪、要你做的事汇总到哪。session 之间自动发消息派活和回报，你只需要跟总管说话。
 
-复制进你的仓库、跑一条命令、给每个会话粘一段开场指令，就能用。
+做成了一个 Claude Code skill：`/devteam`。
+
+## 安装
+
+```bash
+git clone <this repo> devteam-framework
+cp -R devteam-framework/skills/devteam ~/.claude/skills/
+```
+
+## 用法
+
+```text
+/devteam init design frontend backend   # 在仓库根目录装框架（AGENTS.md、context.md、change-log.md、git 钩子、各模块 README）
+/devteam root                           # 把这个 session 设成总管
+/devteam frontend                       # 在另一个 session：设成 frontend 模块
+/devteam backend api-v2                 # 设成 backend 模块，并直接开 backend/api-v2 分支的 worktree
+```
+
+总管还能用：
+
+| 命令 | 做什么 |
+|---|---|
+| `/devteam status` | 更新进度看板（等你验收 / 正在做 / 等你决定 / 已上线），再简短汇报 |
+| `/devteam dispatch <模块> <需求>` | 按模板派活（附你的原话和验收标准），并自动等分支出现提交 |
+| `/devteam review <分支>` | 验收：改动范围、冲突、密钥，在合并后的代码上跑 Verify |
+| `/devteam merge <分支>` | 合并、记 change-log / context，需要时上线并在线上核对 |
+| `/devteam ask` | 把攒下的待定项合并成一次提问问你 |
+
+模块 session 用 `/devteam report` 按模板回报总管。
+
+内置模块预设（管什么、约束、Verify 怎么写、端口段）：`frontend`、`backend`、`design`、`mobile`、`qa`、`admin`、`contracts`、`support`（客服）、`data`（导入 / 采集）。其他名字也能用，按通用模块手册走。
+
+## 文件
+
+```
+skills/devteam/
+  SKILL.md                  # 入口：参数怎么解析、每个命令做什么
+  roles/root.md             # 总管手册：派活循环、验收、合并、问 Owner、进度看板
+  roles/module.md           # 模块 agent 手册
+  roles/messages.md         # 上线 / 派活 / 回报 / 退回 / 合并通知 / 更正 / 暂停 模板
+  roles/presets/*.md        # 常见模块预设
+  assets/AGENTS.md          # 仓库规则模板（init 时复制到仓库根）
+  assets/templates/         # context.md、change-log.md、module-README.md
+  assets/githooks/          # 钩子：越界、密钥、偷偷移动 main 都会被拦
+  scripts/init.sh           # 装框架（已存在的文件不覆盖）
+```
 
 ## 解决什么问题
 
@@ -19,44 +64,6 @@
 - **所有决定都由你（Owner）做**：写进 `context.md` 的每条决定，总管都要找到你的原话才记。
 - **全自动协作**：总管派活 → 模块会话在自己的分支上做 → 回报 → 总管在合并后的代码上跑验证、合并、上线、线上核对。只有总管会来问你问题。
 - **git 钩子强制边界**：模块分支越界改别的目录、提交密钥、偷偷移动 `main`，都会被拦下。
-
-## 文件
-
-```
-AGENTS.md                 # 规则（复制到你的仓库根目录，按占位符改）
-templates/
-  context.md              # 项目状态 / 决定 / 待定 / Owner 待办（复制到根目录）
-  change-log.md           # 改动日志（复制到根目录）
-  module-README.md        # 每个模块目录一份
-prompts/
-  root-agent.md           # 总管 agent 开场指令
-  module-agent.md         # 模块 agent 开场指令
-.githooks/                # 钩子（复制到根目录）
-  modules                 # 模块列表，一行一个
-  setup.sh                # 启用钩子
-  pre-commit / commit-msg / pre-merge-commit / reference-transaction
-  post-commit / post-merge / backup.sh   # 可选：自动推送 private 备份仓库
-```
-
-## 快速开始
-
-```bash
-# 1. 复制到你的仓库根目录
-cp -R AGENTS.md .githooks /path/to/your-repo/
-cp templates/context.md templates/change-log.md /path/to/your-repo/
-
-# 2. 改模块列表（一行一个目录名），每个模块目录放一份 templates/module-README.md
-$EDITOR /path/to/your-repo/.githooks/modules
-
-# 3. 启用钩子
-cd /path/to/your-repo && bash .githooks/setup.sh
-```
-
-4. 编辑 `AGENTS.md` 里的 `<占位符>`：模块归属表、跨模块约定、你自己的规则。
-5. 开一个会话当总管，粘贴 `prompts/root-agent.md`。
-6. 每个模块开一个会话，粘贴 `prompts/module-agent.md`（把 `<module>` 换掉）。
-
-之后你**只需要跟总管说话**：提需求、回答问题、看汇总。总管把活派给模块会话（会话之间自动发消息），模块做完回报，总管验收、合并、上线，再告诉你结果。你想深入聊某个模块时也可以直接走进那个窗口，结论会回报给总管。
 
 ## 它怎么运转
 

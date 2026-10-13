@@ -15,6 +15,11 @@
 ## Status
 <现在做到哪了；下一步是什么；卡在哪>
 
+## Sessions（谁负责什么；新 session 用 /devteam <模块> 上线后由总管登记）
+| session（名字 / id） | 负责 | 端口段 |
+|---|---|---|
+| 总管 | 验收合并、根目录 md、汇总 Owner 待办 | — |
+
 ## Owner 待办（总管汇总，YYYY-MM-DD 更新）
 要 Owner 动手的事都汇总在这里。做完告诉总管，由总管通知对应 session。
 
