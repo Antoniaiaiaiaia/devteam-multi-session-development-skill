@@ -1,114 +1,118 @@
 # Devteam Multi-session Development Skill
 
-**给每个项目配一个「总管 agent」，其余 session 各管一个模块。** 一个人同时开好几个 AI 编码会话（前端、后端、设计、合约……）时，用它管住协作：谁能改哪里、谁来验收合并、决定记在哪、要你做的事汇总到哪。session 之间自动发消息派活和回报，你只需要跟总管说话。
+**English** | [简体中文](README.zh-CN.md)
 
-做成了一个 Claude Code skill：`/devteam`。
+**Give every project one "root agent" and let every other session own a single module.** When you run several AI coding sessions at once (frontend, backend, design, contracts…), this keeps the collaboration under control: who may change what, who reviews and merges, where decisions are recorded, and where the things *you* need to do get collected. Sessions message each other to dispatch work and report back — you only talk to the root agent.
 
-## 安装
+It ships as a Claude Code skill: `/devteam`.
+
+> **Language note:** the skill's prompts and the files it installs (`AGENTS.md`, `context.md`, templates, hook messages) are written in Chinese. Claude follows them fine and will still talk to you in English, but the generated files will be in Chinese.
+
+## Install
 
 ```bash
 git clone https://github.com/Antoniaiaiaiaia/devteam-multi-session-development-skill.git
 cp -R devteam-multi-session-development-skill/skills/devteam ~/.claude/skills/
 ```
 
-## 用法
+## Usage
 
 ```text
-/devteam init design frontend backend   # 在仓库根目录装框架（AGENTS.md、context.md、change-log.md、git 钩子、各模块 README）
-/devteam root                           # 把这个 session 设成总管
-/devteam frontend                       # 在另一个 session：设成 frontend 模块
-/devteam backend api-v2                 # 设成 backend 模块，并直接开 backend/api-v2 分支的 worktree
+/devteam init design frontend backend   # install the framework at the repo root (AGENTS.md, context.md, change-log.md, git hooks, per-module READMEs)
+/devteam root                           # make this session the root agent
+/devteam frontend                       # in another session: make it the frontend module
+/devteam backend api-v2                 # make it the backend module and open a worktree on branch backend/api-v2
 ```
 
-总管还能用：
+Root agent commands:
 
-| 命令 | 做什么 |
+| Command | What it does |
 |---|---|
-| `/devteam status` | 更新进度看板（等你验收 / 正在做 / 等你决定 / 已上线），再简短汇报 |
-| `/devteam dispatch <模块> <需求>` | 按模板派活（附你的原话和验收标准），并自动等分支出现提交 |
-| `/devteam review <分支>` | 验收：改动范围、冲突、密钥，在合并后的代码上跑 Verify |
-| `/devteam merge <分支>` | 合并、记 change-log / context，需要时上线并在线上核对 |
-| `/devteam ask` | 把攒下的待定项合并成一次提问问你 |
+| `/devteam status` | Update the progress board (awaiting your review / in progress / awaiting your decision / shipped), then give a short report |
+| `/devteam dispatch <module> <request>` | Dispatch work from a template (with your exact words and acceptance criteria), then wait for commits to appear on the branch |
+| `/devteam review <branch>` | Review: scope of changes, conflicts, secrets, and run Verify on the merged code |
+| `/devteam merge <branch>` | Merge, record in change-log / context, and deploy + check production when needed |
+| `/devteam ask` | Batch all pending questions into a single question to you |
 
-模块 session 用 `/devteam report` 按模板回报总管。
+Module sessions report back to the root agent with `/devteam report`.
 
-内置模块预设（管什么、约束、Verify 怎么写、端口段）：`frontend`、`backend`、`design`、`mobile`、`qa`、`admin`、`contracts`、`support`（客服）、`data`（导入 / 采集）。其他名字也能用，按通用模块手册走。
+Built-in module presets (ownership, constraints, how to write Verify, port range): `frontend`, `backend`, `design`, `mobile`, `qa`, `admin`, `contracts`, `support`, `data` (import / scraping). Any other name works too and follows the generic module handbook.
 
-## 文件
+## Files
 
 ```
 skills/devteam/
-  SKILL.md                  # 入口：参数怎么解析、每个命令做什么
-  roles/root.md             # 总管手册：派活循环、验收、合并、问 Owner、进度看板
-  roles/module.md           # 模块 agent 手册
-  roles/messages.md         # 上线 / 派活 / 回报 / 退回 / 合并通知 / 更正 / 暂停 模板
-  roles/presets/*.md        # 常见模块预设
-  assets/AGENTS.md          # 仓库规则模板（init 时复制到仓库根）
-  assets/templates/         # context.md、change-log.md、module-README.md
-  assets/githooks/          # 钩子：越界、密钥、偷偷移动 main 都会被拦
-  scripts/init.sh           # 装框架（已存在的文件不覆盖）
+  SKILL.md                  # entry point: argument parsing and what each command does
+  roles/root.md             # root agent handbook: dispatch loop, review, merge, asking the Owner, progress board
+  roles/module.md           # module agent handbook
+  roles/messages.md         # templates: launch / dispatch / report / reject / merge notice / correction / pause
+  roles/presets/*.md        # common module presets
+  assets/AGENTS.md          # repo rules template (copied to the repo root by init)
+  assets/templates/         # context.md, change-log.md, module-README.md
+  assets/githooks/          # hooks that block out-of-scope edits, secrets, and sneaky moves of main
+  scripts/init.sh           # installs the framework (never overwrites existing files)
 ```
 
-## 解决什么问题
+## The problem it solves
 
-同时开 5 个 agent 窗口，很快会出现：
-- A 窗口改了 B 窗口的文件，互相覆盖
-- 某个 agent 替你拍了板，你根本没同意过
-- 同一个问题，三个窗口各问你一遍
-- 你要挨个点开窗口，才知道谁在等你装软件、给 key
-- 决定散落在各个对话里，过两天谁也说不清为什么这么定
+Open five agent windows at once and you quickly get:
+- Window A edits window B's files and they overwrite each other
+- An agent makes a decision on your behalf that you never agreed to
+- Three windows ask you the same question
+- You have to click through every window to find out who is waiting for you to install something or provide a key
+- Decisions are scattered across conversations, and two days later nobody can say why something was decided
 
-这个框架的做法：
-- **一个总管 agent**：唯一能合并到 `main` 的角色。负责验收、决定合并顺序、维护项目状态、汇总你的待办。
-- **若干模块 agent**：各管一个目录，在自己的分支上干活，做完交总管验收。
-- **所有决定都由你（Owner）做**：写进 `context.md` 的每条决定，总管都要找到你的原话才记。
-- **全自动协作**：总管派活 → 模块会话在自己的分支上做 → 回报 → 总管在合并后的代码上跑验证、合并、上线、线上核对。只有总管会来问你问题。
-- **git 钩子强制边界**：模块分支越界改别的目录、提交密钥、偷偷移动 `main`，都会被拦下。
+How this framework handles it:
+- **One root agent**: the only role allowed to merge into `main`. It reviews, decides merge order, maintains project state, and collects your to-dos.
+- **Several module agents**: each owns one directory, works on its own branch, and hands finished work to the root agent for review.
+- **You (the Owner) make every decision**: the root agent only records a decision in `context.md` after finding your exact words.
+- **Fully automatic collaboration**: root dispatches → module works on its branch → reports back → root runs verification on the merged code, merges, deploys, and checks production. Only the root agent ever asks you questions.
+- **Git hooks enforce the boundaries**: a module branch editing another module's directory, committing secrets, or quietly moving `main` gets blocked.
 
-## 它怎么运转
+## How it works
 
 ```
-模块 agent ──(分支 + 提交)──▶ 总管验收 ──▶ main
-     │                         │
-     │  Owner 的原话 / 要 Owner 做的事
-     └────────────────────────▶ 总管核对、写进 context.md、汇总给 Owner
+module agent ──(branch + commits)──▶ root reviews ──▶ main
+     │                                   │
+     │  Owner's words / things the Owner must do
+     └──────────────────────────────────▶ root verifies, writes to context.md, summarizes for the Owner
 ```
 
-- **验收只查明显问题**：越界、冲突、和已有决定矛盾、数字算错、密钥、Verify 跑不过。没问题就合，不卡在待定项上。
-- **合并顺序有规则**：底层程度 → 干净程度 → 影响范围 → 安全性。
-- **后合并的分支用 `git merge main` 同步**，不 rebase。钩子允许模块分支合并 main，但合并结果仍然只能改本模块目录。
+- **Review only checks for obvious problems**: out-of-scope edits, conflicts, contradictions with existing decisions, wrong numbers, secrets, failing Verify. If it's clean, merge — don't block on open questions.
+- **Merge order follows rules**: most foundational → cleanest → smallest blast radius → safest.
+- **Branches merged later sync with `git merge main`**, never rebase. Hooks let module branches merge main, but the result may still only touch that module's directory.
 
-## 踩过的坑（照抄就能绕开）
+## Pitfalls we hit (copy the fixes)
 
-这些都是真实用下来遇到的：
+All of these came up in real use:
 
-1. **fast-forward 能绕过所有 commit / merge 钩子。** 模块 agent 一句 `git merge --ff-only` 就把 main 移走了。所以要加 `reference-transaction` 钩子拦住所有移动 main 的操作，并设 `merge.ff false`。
-2. **无冲突合并时，`pre-merge-commit` 阶段还没有 `MERGE_HEAD`。** 想判断"正在合并的是不是 main"，要从 `GIT_REFLOG_ACTION` 里解析。见 `.githooks/_lib.sh`。
-3. **分支推过备份仓库后，不要 rebase。** 改写过的历史推不上去，备份就一直失败。同步一律 `git merge main`。
-4. **"Owner 没有偏好"不等于"已决定"。** 总管一度把"你没偏好"当成自己可以拍板，结果 Owner 后来改了主意。现在规则是：没有原话的只能记成候选。
-5. **总管不要就同一件事再问 Owner 一遍。** 负责那个话题的会话已经在问了，两边同时问会打架，还会让 Owner 以为两件事。
-6. **别的会话"转述"的决定要回原对话核对。** 至少碰到过一次：把 agent 自己提问时说的话，当成了 Owner 的回答。
-7. **决定会被推翻，旧决定不要删。** 在新条目里写"取代 YYYY-MM-DD 的 xxx"，附上新旧两句原话，以后才说得清为什么改。
-8. **非总管会话也可能直接提交 main。** git 分不清是哪个窗口在提交，钩子只防失误。发现了就保留正确内容、修正错误、提醒那个会话，并把规则写得更明确。
-9. **要 Owner 做的事必须集中。** 否则 Owner 要逐个点开窗口，才知道谁在等自己装软件、给 key。
-10. **zsh 会把 `$VAR:f` 当成变量修饰符。** 脚本里写 `git show "$B:path"` 会出错，要写成 `"${B}:path"`。
-11. **总管自己动手做模块活，会让其他会话闲着、绕开分工。** 现在规则是总管只验收 / 合并 / 部署 / 记录，再小的活也派出去。
-12. **只在分支上跑 Verify 不够。** 主线在你验收期间可能已经合了别的分支，两者单独都过、合在一起才炸。在 `merge-tree` + `commit-tree` 合出来的临时树上跑。
-13. **跨会话消息会排队。** 对方在跑长任务时收不到"暂停"，Owner 急的时候总管要直接停进程，再补一句说明。
-14. **消息交叉。** 你刚发的更正，对方可能已经按旧要求做完并回报了。看回报时先对 hash / 时间，别把旧回报当成对新要求的回应。
-15. **Owner 点名换人做时，先让原来的人停手。** 否则两个会话同时发帖、同时改同一批数据。
-16. **对外发出的东西（频道帖、邮件）先对照 Owner 给的样例逐字核对，再批量发。** 一次模板错了，几十条都要回头改；改之前先渲染一条、读回一条确认。
-17. **首次导入 / 回填不要触发"新内容自动推送"。** 新来源第一次扫描只入库，否则频道会被一次刷几百条。
-18. **合规问题总管拍板，按保守的来。** robots.txt 禁止的接口、要伪造请求头或借用网页会话才能调的内部接口，一律不用。
-19. **模块会话问 Owner、开浏览器弹"允许"，Owner 会被打断很多次。** 统一由总管问，查网页用 curl。
-20. **Owner 说"记一下"的规则，同时写进 AGENTS.md 和总管的长期记忆**，否则下一个会话还会犯。
+1. **Fast-forward bypasses every commit / merge hook.** A module agent ran `git merge --ff-only` and moved main. So a `reference-transaction` hook blocks every operation that moves main, and `merge.ff` is set to `false`.
+2. **On a conflict-free merge, `MERGE_HEAD` doesn't exist yet during `pre-merge-commit`.** To tell whether the branch being merged is main, parse `GIT_REFLOG_ACTION`. See `.githooks/_lib.sh` (`skills/devteam/assets/githooks/_lib.sh` in this repo).
+3. **Don't rebase a branch after it's been pushed to the backup remote.** Rewritten history can't be pushed and backups keep failing. Always sync with `git merge main`.
+4. **"The Owner has no preference" is not "decided".** The root agent once treated "no preference" as permission to decide, and the Owner later changed their mind. Rule now: anything without the Owner's words is only recorded as a candidate.
+5. **The root agent shouldn't re-ask the Owner about the same thing.** If the session that owns that topic is already asking, two parallel questions conflict and make the Owner think there are two issues.
+6. **Verify "relayed" decisions against the original conversation.** At least once, something an agent said while asking a question was mistaken for the Owner's answer.
+7. **Decisions get overturned — don't delete the old ones.** Write "supersedes the YYYY-MM-DD xxx" in the new entry, quoting both the old and new words, so it's clear later why it changed.
+8. **Non-root sessions may still commit to main directly.** Git can't tell which window is committing; hooks only prevent mistakes. When it happens, keep the correct content, fix what's wrong, remind that session, and make the rule more explicit.
+9. **Things the Owner must do have to be centralized.** Otherwise the Owner clicks through every window to find who's waiting on them to install something or provide a key.
+10. **zsh treats `$VAR:f` as a variable modifier.** `git show "$B:path"` in a script breaks; write `"${B}:path"`.
+11. **When the root agent does module work itself, other sessions sit idle and the division of labor breaks down.** Rule now: root only reviews / merges / deploys / records — every task, however small, gets dispatched.
+12. **Running Verify only on the branch isn't enough.** Main may have merged another branch while you were reviewing; each passes alone but they break together. Run it on a temporary tree built with `merge-tree` + `commit-tree`.
+13. **Cross-session messages queue.** A session running a long task won't see "pause". When the Owner is in a hurry, the root agent should stop the process directly and then send an explanation.
+14. **Messages cross.** A correction you just sent may arrive after the other session has finished the old request and reported. Check the hash / timestamp before treating a report as a response to the new request.
+15. **When the Owner reassigns work, stop the original session first.** Otherwise two sessions post at the same time and edit the same data.
+16. **Check anything outbound (channel posts, emails) word-for-word against the Owner's sample before sending in bulk.** One template mistake means dozens of fixes; render one, read it back, then send.
+17. **The first import / backfill must not trigger "auto-push new content".** A new source's first scan should only store data, or the channel gets flooded with hundreds of posts.
+18. **The root agent decides compliance questions, conservatively.** Endpoints disallowed by robots.txt, or internal APIs that need forged headers or a borrowed browser session, are never used.
+19. **When module sessions ask the Owner questions or pop browser "Allow" prompts, the Owner gets interrupted constantly.** Route all questions through the root agent, and use curl to check web pages.
+20. **When the Owner says "remember this", write the rule into both AGENTS.md and the root agent's long-term memory**, or the next session will make the same mistake.
 
-## 适用范围
+## Scope
 
-- 为 Claude Code 这类能读写仓库、跑命令的 coding agent 设计。会话之间能互相发消息时最顺手（例如 Claude Code 桌面版的 SendMessage）。不能的话，由 Owner 把模块的回报复制给总管，流程一样。
-- 钩子是 bash + git，支持 macOS / Linux。
-- 只是约定和护栏，不替代代码评审和测试。
+- Designed for coding agents like Claude Code that can read and write the repo and run commands. Works best when sessions can message each other (e.g. `SendMessage` in the Claude Code desktop app). If they can't, the Owner copies module reports to the root agent by hand — the flow is the same.
+- Hooks are bash + git and support macOS / Linux.
+- These are conventions and guardrails; they don't replace code review or tests.
 
 ## License
 
-MIT，见 [LICENSE](LICENSE)。
+MIT — see [LICENSE](LICENSE).
